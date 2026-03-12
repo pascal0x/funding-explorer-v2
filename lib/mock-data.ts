@@ -1,5 +1,6 @@
 import {
   ASSETS,
+  ExplorerRow,
   HedgeOpportunity,
   InstrumentSnapshot,
   MarketGroup,
@@ -236,7 +237,7 @@ export function getExplorerRows(filters?: {
   venue?: VenueId;
   market?: MarketGroup | "all";
   search?: string;
-}) {
+}): ExplorerRow[] {
   const venue = filters?.venue ?? "hyperliquid";
   const market = filters?.market ?? "all";
   const search = filters?.search?.toLowerCase() ?? "";

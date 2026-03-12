@@ -35,6 +35,21 @@ export type InstrumentSnapshot = {
   history: FundingPoint[];
 };
 
+export type ExplorerRow = InstrumentSnapshot & {
+  asset: AssetProfile;
+  annualizedLive: number;
+  annualizedAvg30d: number;
+  edgeVsAvg30d: number;
+};
+
+export type ExplorerResponse = {
+  rows: ExplorerRow[];
+  source: "live" | "mock";
+  venue: VenueId;
+  generatedAt: string;
+  warning?: string;
+};
+
 export type SpreadOpportunity = {
   symbol: string;
   longVenue: VenueId;
