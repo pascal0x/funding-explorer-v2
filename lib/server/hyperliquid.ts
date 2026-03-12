@@ -1,4 +1,5 @@
 import { ASSETS, ExplorerRow, VenueId } from "../domain";
+import { buildExplorerRow, RawFundingPoint } from "./shared";
 
 type HyperliquidFundingHistoryEntry = {
   time: number;
@@ -13,15 +14,8 @@ type HyperliquidAssetCtx = {
   funding?: string;
 };
 
-type RawPoint = {
-  time: number;
-  rate: number;
-};
-
 const HYPERLIQUID_API_URL = "https://api.hyperliquid.xyz/info";
 const HISTORY_WINDOWS = {
-  "7d": 7,
-  "30d": 30,
   "90d": 90,
 } as const;
 
@@ -69,9 +63,9 @@ async function fetchLiveFunding(symbol: string): Promise<number | null> {
   return typeof funding === "string" ? Number.parseFloat(funding) * 100 : null;
 }
 
-async function fetchFundingHistory(symbol: string, days: number): Promise<RawPoint[]> {
+async function fetchFundingHistory(symbol: string, days: number): Promise<RawFundingPoint[]> {
   const startTime = Date.now() - days * 24 * 60 * 60 * 1000;
-  const points: RawPoint[] = [];
+  const points: RawFundingPoint[] = [];
   const seen = new Set<number>();
   let cursor = startTime;
 
@@ -108,37 +102,6 @@ async function fetchFundingHistory(symbol: string, days: number): Promise<RawPoi
   return points.sort((left, right) => left.time - right.time);
 }
 
-function average(points: RawPoint[]) {
-  if (points.length === 0) {
-    return 0;
-  }
-
-  return points.reduce((sum, point) => sum + point.rate, 0) / points.length;
-}
-
-function percentileRank(points: RawPoint[], currentRate: number) {
-  if (points.length === 0) {
-    return 0;
-  }
-
-  const below = points.filter((point) => point.rate <= currentRate).length;
-  return Math.round((below / points.length) * 100);
-}
-
-function positiveShare(points: RawPoint[]) {
-  if (points.length === 0) {
-    return 0;
-  }
-
-  const positive = points.filter((point) => point.rate >= 0).length;
-  return Math.round((positive / points.length) * 100);
-}
-
-function pickWindow(points: RawPoint[], days: number) {
-  const threshold = Date.now() - days * 24 * 60 * 60 * 1000;
-  return points.filter((point) => point.time >= threshold);
-}
-
 export async function fetchHyperliquidExplorerRows(): Promise<ExplorerRow[]> {
   const rows = await Promise.all(
     SUPPORTED_SYMBOLS.map(async (symbol) => {
@@ -157,31 +120,12 @@ export async function fetchHyperliquidExplorerRows(): Promise<ExplorerRow[]> {
           return null;
         }
 
-        const history30d = pickWindow(history90d, HISTORY_WINDOWS["30d"]);
-        const history7d = pickWindow(history90d, HISTORY_WINDOWS["7d"]);
-        const avg30d = average(history30d);
-        const annualizedLive = liveHourlyRate * 24 * 365;
-        const annualizedAvg30d = avg30d * 24 * 365;
-
-        return {
+        return buildExplorerRow({
           venue: "hyperliquid" satisfies VenueId,
           symbol,
-          asset,
           liveHourlyRate,
-          avg7d: average(history7d),
-          avg30d,
-          avg90d: average(history90d),
-          positiveShare7d: positiveShare(history7d),
-          percentile90d: percentileRank(history90d, liveHourlyRate),
-          updatedAt: new Date().toISOString(),
-          history: history30d.slice(-18).map((point) => ({
-            timestamp: new Date(point.time).toISOString(),
-            rateHourly: Number(point.rate.toFixed(4)),
-          })),
-          annualizedLive,
-          annualizedAvg30d,
-          edgeVsAvg30d: annualizedLive - annualizedAvg30d,
-        };
+          history90d,
+        });
       } catch {
         return null;
       }

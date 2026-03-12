@@ -1,5 +1,7 @@
 import { ExplorerResponse, ExplorerRow, MarketGroup, VenueId } from "../domain";
 import { getExplorerRows } from "../mock-data";
+import { fetchBinanceExplorerRows } from "./binance";
+import { fetchBybitExplorerRows } from "./bybit";
 import { fetchHyperliquidExplorerRows } from "./hyperliquid";
 
 function filterRows(rows: ExplorerRow[], market: MarketGroup | "all", search: string) {
@@ -25,19 +27,18 @@ export async function getExplorerData({
   market: MarketGroup | "all";
   search: string;
 }): Promise<ExplorerResponse> {
-  if (venue === "hyperliquid") {
-    try {
-      const liveRows = await fetchHyperliquidExplorerRows();
-
+  try {
+    const liveRows = await getLiveRowsForVenue(venue);
+    if (liveRows) {
       return {
         rows: filterRows(liveRows, market, search),
         source: "live",
         venue,
         generatedAt: new Date().toISOString(),
       };
-    } catch {
-      // Fall through to a controlled mock response when the upstream API is unavailable.
     }
+  } catch {
+    // Fall through to a controlled mock response when the upstream API is unavailable.
   }
 
   return {
@@ -50,4 +51,17 @@ export async function getExplorerData({
         ? "Live Hyperliquid fetch failed, showing fallback data."
         : "Venue adapter not implemented yet, showing fallback data.",
   };
+}
+
+async function getLiveRowsForVenue(venue: VenueId): Promise<ExplorerRow[] | null> {
+  switch (venue) {
+    case "hyperliquid":
+      return fetchHyperliquidExplorerRows();
+    case "binance":
+      return fetchBinanceExplorerRows();
+    case "bybit":
+      return fetchBybitExplorerRows();
+    default:
+      return null;
+  }
 }

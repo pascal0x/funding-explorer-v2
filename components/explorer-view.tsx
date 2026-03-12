@@ -11,6 +11,8 @@ import {
 } from "../lib/domain";
 import { formatApr, formatHourlyRate, formatMinutesAgo, titleCase } from "../lib/format";
 
+const LIVE_VENUES = new Set<VenueId>(["hyperliquid", "binance", "bybit"]);
+
 function Sparkline({ points }: { points: { rateHourly: number }[] }) {
   const width = 180;
   const height = 56;
@@ -137,7 +139,7 @@ export function ExplorerView({
     count:
       item.id === selectedVenue
         ? rows.length
-        : item.id === "hyperliquid"
+        : LIVE_VENUES.has(item.id)
           ? "live"
           : "soon",
   }));
@@ -211,7 +213,7 @@ export function ExplorerView({
             <h3>Venue, market, and search</h3>
           </div>
           <p className="panel-caption">
-            Hyperliquid uses live server data. The other venues still route through the same API contract, but return fallback rows until their adapters are added.
+            Hyperliquid, Binance, and Bybit use live server data. The other venues still route through the same API contract, but return fallback rows until their adapters are added.
           </p>
         </div>
 
