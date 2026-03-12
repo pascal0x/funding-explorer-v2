@@ -29,7 +29,7 @@ export async function getExplorerData({
 }): Promise<ExplorerResponse> {
   try {
     const liveRows = await getLiveRowsForVenue(venue);
-    if (liveRows) {
+    if (liveRows && liveRows.length > 0) {
       return {
         rows: filterRows(liveRows, market, search),
         source: "live",
@@ -48,7 +48,7 @@ export async function getExplorerData({
     generatedAt: new Date().toISOString(),
     warning:
       venue === "hyperliquid"
-        ? "Live Hyperliquid fetch failed, showing fallback data."
+        ? "Live Hyperliquid fetch failed or returned no rows, showing fallback data."
         : "Venue adapter not implemented yet, showing fallback data.",
   };
 }

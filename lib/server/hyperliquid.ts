@@ -14,6 +14,11 @@ type HyperliquidAssetCtx = {
   funding?: string;
 };
 
+type HyperliquidPredictedFundingEntry = [
+  string,
+  [string, { fundingRate: string; nextFundingTime: number; fundingIntervalHours: number } | null][],
+];
+
 const HYPERLIQUID_API_URL = "https://api.hyperliquid.xyz/info";
 const HISTORY_WINDOWS = {
   "90d": 90,
@@ -63,6 +68,26 @@ async function fetchLiveFunding(symbol: string): Promise<number | null> {
   return typeof funding === "string" ? Number.parseFloat(funding) * 100 : null;
 }
 
+async function fetchPredictedFundingMap() {
+  const rows = await postHyperliquid<HyperliquidPredictedFundingEntry[]>({
+    type: "predictedFundings",
+  });
+
+  const fundingMap = new Map<string, number>();
+
+  for (const [coin, venues] of rows) {
+    const hlPerp = venues.find(([source]) => source === "HlPerp")?.[1];
+    if (!hlPerp) {
+      continue;
+    }
+
+    const intervalHours = hlPerp.fundingIntervalHours || 1;
+    fundingMap.set(coin, (Number.parseFloat(hlPerp.fundingRate) * 100) / intervalHours);
+  }
+
+  return fundingMap;
+}
+
 async function fetchFundingHistory(symbol: string, days: number): Promise<RawFundingPoint[]> {
   const startTime = Date.now() - days * 24 * 60 * 60 * 1000;
   const points: RawFundingPoint[] = [];
@@ -103,6 +128,8 @@ async function fetchFundingHistory(symbol: string, days: number): Promise<RawFun
 }
 
 export async function fetchHyperliquidExplorerRows(): Promise<ExplorerRow[]> {
+  const predictedFundingMap = await fetchPredictedFundingMap();
+
   const rows = await Promise.all(
     SUPPORTED_SYMBOLS.map(async (symbol) => {
       const asset = ASSETS.find((entry) => entry.symbol === symbol);
@@ -111,10 +138,15 @@ export async function fetchHyperliquidExplorerRows(): Promise<ExplorerRow[]> {
       }
 
       try {
-        const [liveHourlyRate, history90d] = await Promise.all([
+        const [liveFundingFromContext, history90d] = await Promise.all([
           fetchLiveFunding(symbol),
           fetchFundingHistory(symbol, HISTORY_WINDOWS["90d"]),
         ]);
+
+        const liveHourlyRate =
+          predictedFundingMap.get(apiCoin(symbol)) ??
+          predictedFundingMap.get(symbol) ??
+          liveFundingFromContext;
 
         if (liveHourlyRate === null || history90d.length === 0) {
           return null;
