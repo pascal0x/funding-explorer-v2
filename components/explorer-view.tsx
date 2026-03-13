@@ -37,8 +37,6 @@ type SortKey =
   | "avg7dApr"
   | "annualizedAvg30d"
   | "avg90dApr"
-  | "edgeVsAvg30d"
-  | "percentile90d"
   | "positiveShare7d";
 
 type SortState = {
@@ -75,6 +73,21 @@ function formatDateTime(iso: string) {
       minute: "2-digit",
     }),
   };
+}
+
+function assetVisual(symbol: string) {
+  const visuals: Record<string, { mark: string; tone: string }> = {
+    BTC: { mark: "B", tone: "asset-badge-bitcoin" },
+    ETH: { mark: "E", tone: "asset-badge-ethereum" },
+    SOL: { mark: "S", tone: "asset-badge-solana" },
+    HYPE: { mark: "H", tone: "asset-badge-hype" },
+    NVDA: { mark: "N", tone: "asset-badge-nvda" },
+    TSLA: { mark: "T", tone: "asset-badge-tsla" },
+    GOLD: { mark: "G", tone: "asset-badge-gold" },
+    EUR: { mark: "€", tone: "asset-badge-eur" },
+  };
+
+  return visuals[symbol] ?? { mark: symbol.slice(0, 1), tone: "asset-badge-default" };
 }
 
 function buildSummary(rows: ExplorerRow[]): SummaryItem[] {
@@ -116,10 +129,6 @@ function sortRows(rows: ExplorerRow[], sort: SortState) {
         return direction * (left.annualizedAvg30d - right.annualizedAvg30d);
       case "avg90dApr":
         return direction * (left.avg90d - right.avg90d);
-      case "edgeVsAvg30d":
-        return direction * (left.edgeVsAvg30d - right.edgeVsAvg30d);
-      case "percentile90d":
-        return direction * (left.percentile90d - right.percentile90d);
       case "positiveShare7d":
         return direction * (left.positiveShare7d - right.positiveShare7d);
       default:
@@ -545,9 +554,12 @@ export function ExplorerView({
               </div>
               <section className="summary-ribbon summary-ribbon-venue">
                 {venueSummary.map((item) => (
-                  <article key={`venue-${item.label}`} className="summary-tile summary-tile-subtle">
+                  <article key={`venue-${item.label}`} className="summary-tile summary-tile-subtle summary-tile-tall">
                     <span>{item.label}</span>
-                    <strong>{item.symbol}</strong>
+                    <div className="summary-symbol">
+                      <i className={`asset-badge ${assetVisual(item.symbol).tone}`}>{assetVisual(item.symbol).mark}</i>
+                      <strong>{item.symbol}</strong>
+                    </div>
                     <em>{item.value}</em>
                   </article>
                 ))}
@@ -573,8 +585,6 @@ export function ExplorerView({
                       <th><SortHeader label="Avg 7d APR" sortKey="avg7dApr" activeSort={sort} onSort={handleSort} /></th>
                       <th><SortHeader label="Avg 30d APR" sortKey="annualizedAvg30d" activeSort={sort} onSort={handleSort} /></th>
                       <th><SortHeader label="Avg 90d APR" sortKey="avg90dApr" activeSort={sort} onSort={handleSort} /></th>
-                      <th><SortHeader label="Delta vs 30d" sortKey="edgeVsAvg30d" activeSort={sort} onSort={handleSort} /></th>
-                      <th><SortHeader label="90d pct" sortKey="percentile90d" activeSort={sort} onSort={handleSort} /></th>
                       <th><SortHeader label="% positive" sortKey="positiveShare7d" activeSort={sort} onSort={handleSort} /></th>
                       <th>Trend</th>
                     </tr>
@@ -592,7 +602,10 @@ export function ExplorerView({
                         >
                           <td>
                             <div className="asset-cell">
-                              <strong>{row.symbol}</strong>
+                              <div className="asset-symbol-row">
+                                <i className={`asset-badge ${assetVisual(row.symbol).tone}`}>{assetVisual(row.symbol).mark}</i>
+                                <strong>{row.symbol}</strong>
+                              </div>
                               <span>{row.asset.name}</span>
                             </div>
                           </td>
@@ -601,14 +614,12 @@ export function ExplorerView({
                           <td className={row.avg7d >= 0 ? "positive" : "negative"}>{formatApr(row.avg7d * 24 * 365)}</td>
                           <td className={row.annualizedAvg30d >= 0 ? "positive" : "negative"}>{formatApr(row.annualizedAvg30d)}</td>
                           <td className={row.avg90d >= 0 ? "positive" : "negative"}>{formatApr(row.avg90d * 24 * 365)}</td>
-                          <td className={row.edgeVsAvg30d >= 0 ? "positive" : "negative"}>{formatApr(row.edgeVsAvg30d)}</td>
-                          <td>{row.percentile90d}</td>
                           <td>{row.positiveShare7d}%</td>
                           <td><Chart points={row.history} compact /></td>
                         </tr>,
                         expanded ? (
                           <tr key={`${rowKey}-detail`} className="detail-row">
-                            <td colSpan={10}>
+                            <td colSpan={8}>
                               <div className="detail-panel detail-panel-board">
                                 <div className="detail-summary detail-summary-clean">
                                   <article className="detail-stat"><span>Live APR</span><strong>{formatApr(row.annualizedLive)}</strong></article>
