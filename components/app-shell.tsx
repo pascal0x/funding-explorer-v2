@@ -5,11 +5,11 @@ import { useEffect, useState } from "react";
 import { ProductPageId } from "../lib/domain";
 
 const NAV_ITEMS: { id: ProductPageId; href: string; label: string; blurb: string }[] = [
-  { id: "explorer", href: "/", label: "Explorer", blurb: "Screen funding across venues" },
-  { id: "trend", href: "/trend", label: "Trend", blurb: "Current vs historical regime" },
+  { id: "explorer", href: "/", label: "Explorer", blurb: "Explore funding rates" },
+  { id: "trend", href: "/trend", label: "Trend", blurb: "Analyse funding rate momentum" },
   { id: "compare", href: "/compare", label: "Compare", blurb: "Best venue by asset" },
-  { id: "spread", href: "/spread", label: "Spread", blurb: "Long/short venue arb" },
-  { id: "hedge", href: "/hedge", label: "Hedge", blurb: "Boros implied vs funding" },
+  { id: "spread", href: "/spread", label: "Spread", blurb: "Find the highest spread" },
+  { id: "hedge", href: "/hedge", label: "Swaps", blurb: "Funding rate swap" },
 ];
 
 type ThemeMode = "light" | "dark" | "auto";

@@ -7,8 +7,8 @@ const COPY: Record<
   { title: string; subtitle: string; bullets: string[] }
 > = {
   trend: {
-    title: "Trend normalizes the current print",
-    subtitle: "This page should answer whether current funding is stretched, reverting, or confirming momentum.",
+    title: "Analyse Funding Rate Momentum",
+    subtitle: "Analyse The Trends Using Moving Averages And Standard Deviation Of Funding Rates",
     bullets: [
       "Daily and intraday moving averages from the same canonical snapshots table.",
       "Percentile, z-score, and distance versus MA 7d / 30d / 90d.",
@@ -25,8 +25,8 @@ const COPY: Record<
     ],
   },
   spread: {
-    title: "Spread turns funding differentials into tradeable setups",
-    subtitle: "This is the arb view: short the rich venue, long the cheap venue, then annualize the carry.",
+    title: "Find The Highest Spread",
+    subtitle: "Spot Cross-Exchange Funding Rate Arbitrage Opportunities",
     bullets: [
       "Spread table sourced from pairwise venue aggregates.",
       "Gross APR and leveraged APR by preset risk buckets.",
@@ -34,8 +34,8 @@ const COPY: Record<
     ],
   },
   hedge: {
-    title: "Hedge compares Boros implied rates to funding carry",
-    subtitle: "This page becomes useful when implied borrow is directly benchmarked against rolling funding averages.",
+    title: "Funding Rate Swap",
+    subtitle: "Compare Boros' Fixed Rate (Implied Rate) To The Variable Funding Rate To Find The Best Swaps",
     bullets: [
       "Boros implied APR versus funding MA 7d and MA 30d.",
       "Simple decision state: cheap, neutral, rich.",

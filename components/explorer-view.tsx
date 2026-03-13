@@ -20,7 +20,7 @@ const NAV_ITEMS: { id: ProductPageId; href: string; label: string; icon: string 
   { id: "trend", href: "/trend", label: "Trend", icon: "∿" },
   { id: "compare", href: "/compare", label: "Compare", icon: "≡" },
   { id: "spread", href: "/spread", label: "Spread", icon: "⇄" },
-  { id: "hedge", href: "/hedge", label: "Hedge", icon: "◎" },
+  { id: "hedge", href: "/hedge", label: "Swaps", icon: "◎" },
 ];
 const THEME_OPTIONS: { mode: ThemeMode; icon: string; label: string }[] = [
   { mode: "light", icon: "◐", label: "Light" },
@@ -541,9 +541,9 @@ export function ExplorerView({
           <header className="explorer-main-header">
             <div>
               <p className="eyebrow">Overview</p>
-              <h2>{selectedVenueLabel} funding dashboard</h2>
+              <h2>Explore Funding Rates</h2>
               <p className="hero-copy">
-                A calmer market board for ranking live carry, comparing rolling averages, and opening detailed time-series only when needed.
+                Historical, Average And Live Funding Rates For All Perps
               </p>
             </div>
           </header>
