@@ -7,6 +7,7 @@ type BybitTickerResponse = {
     list: {
       symbol: string;
       fundingRate: string;
+      fundingIntervalHour?: string;
     }[];
   };
 };
@@ -22,12 +23,17 @@ type BybitFundingHistoryResponse = {
 };
 
 const BYBIT_API_URL = "https://api.bybit.com";
+const DEFAULT_FUNDING_INTERVAL_HOURS = 8;
 const SUPPORTED_SYMBOLS = ASSETS
   .map((asset) => asset.symbol)
   .filter((symbol) => ["BTC", "ETH", "SOL"].includes(symbol));
 
 function bybitSymbol(symbol: string) {
   return `${symbol}USDT`;
+}
+
+function toHourlyPercent(rate: string, fundingIntervalHours: number) {
+  return (Number.parseFloat(rate) * 100) / fundingIntervalHours;
 }
 
 async function fetchBybit<T>(path: string) {
@@ -46,12 +52,19 @@ async function fetchLiveFunding(symbol: string) {
   const response = await fetchBybit<BybitTickerResponse>(
     `/v5/market/tickers?category=linear&symbol=${bybitSymbol(symbol)}`,
   );
-  const fundingRate = response.result.list[0]?.fundingRate;
+  const row = response.result.list[0];
+  const fundingRate = row?.fundingRate;
+  const fundingIntervalHours = Number.parseInt(row?.fundingIntervalHour ?? "", 10) || DEFAULT_FUNDING_INTERVAL_HOURS;
 
-  return fundingRate ? Number.parseFloat(fundingRate) * 100 : null;
+  return fundingRate
+    ? {
+        liveHourlyRate: toHourlyPercent(fundingRate, fundingIntervalHours),
+        fundingIntervalHours,
+      }
+    : null;
 }
 
-async function fetchFundingHistory(symbol: string): Promise<RawFundingPoint[]> {
+async function fetchFundingHistory(symbol: string, fundingIntervalHours: number): Promise<RawFundingPoint[]> {
   const response = await fetchBybit<BybitFundingHistoryResponse>(
     `/v5/market/funding/history?category=linear&symbol=${bybitSymbol(symbol)}&limit=200`,
   );
@@ -59,7 +72,7 @@ async function fetchFundingHistory(symbol: string): Promise<RawFundingPoint[]> {
   return response.result.list
     .map((row) => ({
       time: Number.parseInt(row.fundingRateTimestamp, 10),
-      rate: Number.parseFloat(row.fundingRate) * 100,
+      rate: toHourlyPercent(row.fundingRate, fundingIntervalHours),
     }))
     .sort((left, right) => left.time - right.time);
 }
@@ -68,19 +81,18 @@ export async function fetchBybitExplorerRows(): Promise<ExplorerRow[]> {
   const rows = await Promise.all(
     SUPPORTED_SYMBOLS.map(async (symbol) => {
       try {
-        const [liveHourlyRate, history90d] = await Promise.all([
-          fetchLiveFunding(symbol),
-          fetchFundingHistory(symbol),
-        ]);
+        const liveFunding = await fetchLiveFunding(symbol);
 
-        if (liveHourlyRate === null) {
+        if (liveFunding === null) {
           return null;
         }
+
+        const history90d = await fetchFundingHistory(symbol, liveFunding.fundingIntervalHours);
 
         return buildExplorerRow({
           venue: "bybit",
           symbol,
-          liveHourlyRate,
+          liveHourlyRate: liveFunding.liveHourlyRate,
           history90d,
         });
       } catch {

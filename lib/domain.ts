@@ -88,6 +88,17 @@ export const VENUES: { id: VenueId; label: string; type: "dex" | "cex" | "rates"
   { id: "boros", label: "Boros", type: "rates" },
 ];
 
+export const VENUE_MARKETS: Record<VenueId, MarketGroup[]> = {
+  hyperliquid: ["crypto", "stocks", "commodities", "fx-etf"],
+  binance: ["crypto"],
+  bybit: ["crypto"],
+  okx: ["crypto"],
+  dydx: ["crypto"],
+  lighter: ["crypto", "stocks", "commodities", "fx-etf"],
+  asterdex: ["crypto", "stocks"],
+  boros: ["crypto"],
+};
+
 export const ASSETS: AssetProfile[] = [
   { symbol: "BTC", name: "Bitcoin", market: "crypto" },
   { symbol: "ETH", name: "Ethereum", market: "crypto" },

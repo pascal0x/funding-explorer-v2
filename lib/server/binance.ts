@@ -12,12 +12,17 @@ type BinanceFundingHistoryEntry = {
 };
 
 const BINANCE_API_URL = "https://fapi.binance.com";
+const FUNDING_INTERVAL_HOURS = 8;
 const SUPPORTED_SYMBOLS = ASSETS
   .map((asset) => asset.symbol)
   .filter((symbol) => ["BTC", "ETH", "SOL"].includes(symbol));
 
 function binanceSymbol(symbol: string) {
   return `${symbol}USDT`;
+}
+
+function toHourlyPercent(rate: string) {
+  return (Number.parseFloat(rate) * 100) / FUNDING_INTERVAL_HOURS;
 }
 
 async function fetchBinance<T>(path: string) {
@@ -35,9 +40,7 @@ async function fetchBinance<T>(path: string) {
 async function fetchLiveFundingMap() {
   const rows = await fetchBinance<BinancePremiumIndexEntry[]>("/fapi/v1/premiumIndex");
 
-  return new Map(
-    rows.map((row) => [row.symbol, Number.parseFloat(row.lastFundingRate) * 100]),
-  );
+  return new Map(rows.map((row) => [row.symbol, toHourlyPercent(row.lastFundingRate)]));
 }
 
 async function fetchFundingHistory(symbol: string): Promise<RawFundingPoint[]> {
@@ -47,7 +50,7 @@ async function fetchFundingHistory(symbol: string): Promise<RawFundingPoint[]> {
 
   return rows.map((row) => ({
     time: row.fundingTime,
-    rate: Number.parseFloat(row.fundingRate) * 100,
+    rate: toHourlyPercent(row.fundingRate),
   }));
 }
 
