@@ -11,7 +11,7 @@ import {
   VENUES,
   VenueId,
 } from "../lib/domain";
-import { formatApr, formatHourlyRate, formatMinutesAgo, titleCase } from "../lib/format";
+import { formatApr, formatHourlyRate, titleCase } from "../lib/format";
 
 const LIVE_VENUES = ["hyperliquid", "binance", "bybit"] satisfies VenueId[];
 const APP_VERSION = "v0.1.0";
@@ -502,27 +502,29 @@ export function ExplorerView({
           </div>
         </aside>
 
-        <div className="explorer-main-stage">
-          {loading && globalSummary.length === 0 ? (
+        {loading && globalSummary.length === 0 ? (
+          <div className="explorer-floating-summary">
             <SummarySkeleton />
-          ) : (
-            <section className="summary-cluster">
-              <div className="summary-cluster-head">
-                <p className="eyebrow">All venues</p>
-                <h3>Top five across venues</h3>
-              </div>
-              <section className="summary-ribbon summary-ribbon-global">
-                {globalSummary.map((item) => (
-                  <article key={`global-${item.label}`} className="summary-tile">
-                    <span>{item.label}</span>
-                    <strong>{item.symbol}</strong>
-                    <em>{item.value}</em>
-                  </article>
-                ))}
-              </section>
+          </div>
+        ) : (
+          <section className="summary-cluster explorer-floating-summary">
+            <div className="summary-cluster-head">
+              <p className="eyebrow">All venues</p>
+              <h3>Top five across venues</h3>
+            </div>
+            <section className="summary-ribbon summary-ribbon-global">
+              {globalSummary.map((item) => (
+                <article key={`global-${item.label}`} className="summary-tile">
+                  <span>{item.label}</span>
+                  <strong>{item.symbol}</strong>
+                  <em>{item.value}</em>
+                </article>
+              ))}
             </section>
-          )}
+          </section>
+        )}
 
+        <div className="explorer-main-stage">
           <header className="explorer-main-header">
             <div>
               <p className="eyebrow">Overview</p>
@@ -554,13 +556,6 @@ export function ExplorerView({
           )}
 
           <section className="explorer-table-card">
-            <div className="explorer-table-head explorer-table-head-clean">
-              <div>
-                <p className="eyebrow">Screen</p>
-                <h3>Sortable funding table</h3>
-              </div>
-            </div>
-
             {loading ? (
               <TableSkeleton />
             ) : error ? (

@@ -192,11 +192,20 @@ td {
 
 .theme-button-active,
 .nav-item-active,
-.theme-icon-button-active,
-.rail-pill-active {
+.theme-icon-button-active {
   color: var(--ink);
   border-color: color-mix(in srgb, var(--accent) 34%, var(--line));
   background: color-mix(in srgb, var(--accent) 12%, var(--paper-strong) 88%);
+}
+
+.rail-pill-active {
+  color: var(--ink);
+  border-color: transparent;
+  background: #f1f1f1;
+}
+
+html[data-theme="dark"] .rail-pill-active {
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .sidebar-nav {
@@ -404,7 +413,7 @@ td {
 }
 
 .rail-nav-item-active {
-  border-color: color-mix(in srgb, var(--line-strong) 60%, transparent 40%);
+  border-color: transparent;
   background: #f1f1f1;
 }
 
@@ -503,10 +512,18 @@ html[data-theme="dark"] .rail-nav-item-active {
 
 .explorer-main-stage {
   display: grid;
-  gap: 22px;
-  padding: 118px 28px 28px;
+  gap: 24px;
+  padding: 276px 40px 34px;
   border-radius: 28px;
   background: var(--paper);
+}
+
+.explorer-floating-summary {
+  grid-column: 2;
+  grid-row: 1;
+  position: relative;
+  z-index: 2;
+  margin: 96px 28px 0;
 }
 
 .explorer-main-header {
@@ -579,23 +596,12 @@ html[data-theme="dark"] .rail-nav-item-active {
 
 .explorer-table-card {
   display: grid;
-  gap: 16px;
+  gap: 12px;
   padding: 18px;
   border: 1px solid var(--line);
   border-radius: 24px;
   background: color-mix(in srgb, var(--paper-strong) 84%, transparent 16%);
   box-shadow: var(--shadow-soft);
-}
-
-.explorer-table-head {
-  display: flex;
-  justify-content: space-between;
-  gap: 16px;
-  align-items: flex-end;
-}
-
-.explorer-table-head-clean {
-  padding: 0;
 }
 
 .panel-caption {
@@ -868,8 +874,13 @@ html[data-theme="dark"] .rail-nav-item-active {
     height: 68px;
   }
 
+  .explorer-floating-summary {
+    grid-column: 1;
+    margin: 94px 18px 0;
+  }
+
   .explorer-main-stage {
-    padding-top: 104px;
+    padding-top: 300px;
   }
 
   .summary-ribbon,
@@ -898,8 +909,7 @@ html[data-theme="dark"] .rail-nav-item-active {
     padding: 16px;
   }
 
-  .explorer-main-header,
-  .explorer-table-head {
+  .explorer-main-header {
     flex-direction: column;
     align-items: flex-start;
   }
