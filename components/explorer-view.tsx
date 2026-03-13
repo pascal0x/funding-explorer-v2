@@ -433,8 +433,6 @@ export function ExplorerView({
   return (
     <div className="explorer-scene explorer-scene-standalone">
       <section className="explorer-board">
-        <div className="explorer-hero-strip" />
-
         <aside className="explorer-side-rail explorer-side-rail-navfirst">
           <div className="rail-nav-wrap rail-nav-wrap-clean">
             <nav className="rail-nav rail-nav-clean">
@@ -606,10 +604,7 @@ export function ExplorerView({
                         >
                           <td>
                             <div className="asset-cell">
-                              <div className="asset-symbol-row">
-                                <i className={`asset-badge ${assetVisual(row.symbol).tone}`}>{assetVisual(row.symbol).mark}</i>
-                                <strong>{row.symbol}</strong>
-                              </div>
+                              <strong>{row.symbol}</strong>
                               <span>{row.asset.name}</span>
                             </div>
                           </td>
