@@ -511,29 +511,33 @@ export function ExplorerView({
           </div>
         </aside>
 
-        {loading && globalSummary.length === 0 ? (
-          <div className="explorer-floating-summary">
-            <SummarySkeleton />
-          </div>
-        ) : (
-          <section className="summary-cluster explorer-floating-summary">
-            <div className="summary-cluster-head">
-              <p className="eyebrow">All venues</p>
-              <h3>Top five across venues</h3>
+        <div className="explorer-content-column">
+          {loading && globalSummary.length === 0 ? (
+            <div className="explorer-floating-summary">
+              <SummarySkeleton />
             </div>
-            <section className="summary-ribbon summary-ribbon-global">
-              {globalSummary.map((item) => (
-                <article key={`global-${item.label}`} className="summary-tile">
-                  <span>{item.label}</span>
-                  <strong>{item.symbol}</strong>
-                  <em>{item.value}</em>
-                </article>
-              ))}
+          ) : (
+            <section className="summary-cluster explorer-floating-summary">
+              <div className="summary-cluster-head">
+                <p className="eyebrow">All venues</p>
+                <h3>Top five across venues</h3>
+              </div>
+              <section className="summary-ribbon summary-ribbon-global">
+                {globalSummary.map((item) => (
+                  <article key={`global-${item.label}`} className="summary-tile summary-tile-tall">
+                    <span>{item.label}</span>
+                    <div className="summary-symbol">
+                      <i className={`asset-badge ${assetVisual(item.symbol).tone}`}>{assetVisual(item.symbol).mark}</i>
+                      <strong>{item.symbol}</strong>
+                    </div>
+                    <em>{item.value}</em>
+                  </article>
+                ))}
+              </section>
             </section>
-          </section>
-        )}
+          )}
 
-        <div className="explorer-main-stage">
+          <div className="explorer-main-stage">
           <header className="explorer-main-header">
             <div>
               <p className="eyebrow">Overview</p>
@@ -668,6 +672,7 @@ export function ExplorerView({
               </div>
             )}
           </section>
+          </div>
         </div>
       </section>
     </div>
