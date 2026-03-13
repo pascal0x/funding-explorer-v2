@@ -1,10 +1,28 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
-import { ExplorerResponse, ExplorerRow, MarketGroup, VENUE_MARKETS, VENUES, VenueId } from "../lib/domain";
+import {
+  ExplorerResponse,
+  ExplorerRow,
+  MarketGroup,
+  ProductPageId,
+  VENUE_MARKETS,
+  VENUES,
+  VenueId,
+} from "../lib/domain";
 import { formatApr, formatHourlyRate, formatMinutesAgo, titleCase } from "../lib/format";
 
 const LIVE_VENUES = ["hyperliquid", "binance", "bybit"] satisfies VenueId[];
+const NAV_ITEMS: { id: ProductPageId; href: string; label: string }[] = [
+  { id: "explorer", href: "/", label: "Explorer" },
+  { id: "trend", href: "/trend", label: "Trend" },
+  { id: "compare", href: "/compare", label: "Compare" },
+  { id: "spread", href: "/spread", label: "Spread" },
+  { id: "hedge", href: "/hedge", label: "Hedge" },
+];
+
+type ThemeMode = "light" | "dark" | "auto";
 
 type SortKey =
   | "symbol"
@@ -28,6 +46,13 @@ type SummaryItem = {
   symbol: string;
   value: string;
 };
+
+function applyTheme(mode: ThemeMode) {
+  const root = document.documentElement;
+  const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+  const resolved = mode === "auto" ? (prefersDark ? "dark" : "light") : mode;
+  root.dataset.theme = resolved;
+}
 
 function formatDateLabel(iso: string) {
   return new Date(iso).toLocaleDateString("en-GB", {
@@ -197,6 +222,37 @@ function SortHeader({
   );
 }
 
+function SummarySkeleton() {
+  return (
+    <section className="summary-ribbon summary-ribbon-global">
+      {Array.from({ length: 5 }, (_, index) => (
+        <article key={index} className="summary-tile summary-tile-skeleton">
+          <span className="skeleton-line skeleton-line-short" />
+          <strong className="skeleton-line skeleton-line-medium" />
+          <em className="skeleton-line skeleton-line-short" />
+        </article>
+      ))}
+    </section>
+  );
+}
+
+function TableSkeleton() {
+  return (
+    <div className="table-skeleton">
+      {Array.from({ length: 8 }, (_, index) => (
+        <div key={index} className="table-skeleton-row">
+          <span className="skeleton-line skeleton-line-medium" />
+          <span className="skeleton-line skeleton-line-short" />
+          <span className="skeleton-line skeleton-line-short" />
+          <span className="skeleton-line skeleton-line-short" />
+          <span className="skeleton-line skeleton-line-short" />
+          <span className="skeleton-line skeleton-line-short" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 async function fetchExplorerPayload(venue: VenueId, market: MarketGroup | "all", search = "") {
   const params = new URLSearchParams({ venue, market });
   if (search.trim().length > 0) {
@@ -228,7 +284,25 @@ export function ExplorerView({
   const [error, setError] = useState<string | null>(null);
   const [expandedRowKey, setExpandedRowKey] = useState<string | null>(null);
   const [sort, setSort] = useState<SortState>({ key: "annualizedLive", direction: "desc" });
+  const [themeMode, setThemeMode] = useState<ThemeMode>("auto");
   const availableMarkets = ["all", ...VENUE_MARKETS[selectedVenue]] as const;
+
+  useEffect(() => {
+    const storedTheme = window.localStorage.getItem("funding-theme");
+    const initialTheme =
+      storedTheme === "light" || storedTheme === "dark" || storedTheme === "auto" ? storedTheme : "auto";
+
+    setThemeMode(initialTheme);
+    applyTheme(initialTheme);
+
+    const media = window.matchMedia("(prefers-color-scheme: dark)");
+    const listener = () => applyTheme(initialTheme);
+    media.addEventListener("change", listener);
+
+    return () => {
+      media.removeEventListener("change", listener);
+    };
+  }, []);
 
   useEffect(() => {
     if (selectedMarket !== "all" && !VENUE_MARKETS[selectedVenue].includes(selectedMarket)) {
@@ -303,67 +377,86 @@ export function ExplorerView({
     );
   }
 
+  function handleThemeChange(mode: ThemeMode) {
+    setThemeMode(mode);
+    window.localStorage.setItem("funding-theme", mode);
+    applyTheme(mode);
+  }
+
   return (
-    <div className="explorer-scene">
+    <div className="explorer-scene explorer-scene-standalone">
       <section className="explorer-board">
         <div className="explorer-hero-strip" />
 
-        <aside className="explorer-side-rail">
-          <div className="rail-brand">
-            <span className="rail-mark" />
-            <div>
-              <p>Funding Desk</p>
-              <strong>Explorer</strong>
-            </div>
-          </div>
-
-          <div className="rail-profile">
-            <div className="rail-avatar">F</div>
-            <strong>{selectedVenueLabel}</strong>
-            <span>{response?.source === "live" ? "Live venue feed" : "Fallback / pending adapter"}</span>
-          </div>
-
-          <div className="rail-block">
-            <span className="rail-label">Venue</span>
-            <div className="rail-pill-grid">
-              {VENUES.filter((item) => item.id !== "boros").map((item) => (
-                <button
+        <aside className="explorer-side-rail explorer-side-rail-navfirst">
+          <div className="rail-nav-wrap">
+            <p className="rail-label">Navigate</p>
+            <nav className="rail-nav">
+              {NAV_ITEMS.map((item) => (
+                <Link
                   key={item.id}
-                  type="button"
-                  className={selectedVenue === item.id ? "rail-pill rail-pill-active" : "rail-pill"}
-                  onClick={() => setSelectedVenue(item.id)}
+                  href={item.href}
+                  className={item.id === "explorer" ? "rail-nav-item rail-nav-item-active" : "rail-nav-item"}
                 >
                   {item.label}
-                </button>
+                </Link>
               ))}
-            </div>
+            </nav>
           </div>
 
-          <div className="rail-block">
-            <span className="rail-label">Market</span>
-            <div className="rail-pill-grid">
-              {availableMarkets.map((group) => (
-                <button
-                  key={group}
-                  type="button"
-                  className={selectedMarket === group ? "rail-pill rail-pill-active" : "rail-pill"}
-                  onClick={() => setSelectedMarket(group)}
-                >
-                  {titleCase(group)}
-                </button>
-              ))}
+          <div className="rail-filter-stack">
+            <div className="rail-block">
+              <span className="rail-label">Venue</span>
+              <div className="rail-pill-grid">
+                {VENUES.filter((item) => item.id !== "boros").map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    className={selectedVenue === item.id ? "rail-pill rail-pill-active" : "rail-pill"}
+                    onClick={() => setSelectedVenue(item.id)}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
 
-          <label className="rail-search">
-            <span className="rail-label">Search</span>
-            <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="BTC, ETH, NVDA" />
-          </label>
+            <div className="rail-block">
+              <span className="rail-label">Market</span>
+              <div className="rail-pill-grid">
+                {availableMarkets.map((group) => (
+                  <button
+                    key={group}
+                    type="button"
+                    className={selectedMarket === group ? "rail-pill rail-pill-active" : "rail-pill"}
+                    onClick={() => setSelectedMarket(group)}
+                  >
+                    {titleCase(group)}
+                  </button>
+                ))}
+              </div>
+            </div>
 
-          <div className="rail-status">
-            <span>{response?.source === "live" ? "Live" : "Mock"}</span>
-            <strong>{baseRows.length}</strong>
-            <em>{response?.generatedAt ? `Updated ${formatMinutesAgo(response.generatedAt)}` : "Waiting for data"}</em>
+            <label className="rail-search">
+              <span className="rail-label">Search</span>
+              <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="BTC, ETH, NVDA" />
+            </label>
+
+            <div className="rail-theme-block">
+              <span className="rail-label">Theme</span>
+              <div className="theme-switcher">
+                {(["light", "dark", "auto"] as const).map((mode) => (
+                  <button
+                    key={mode}
+                    type="button"
+                    className={themeMode === mode ? "theme-button theme-button-active" : "theme-button"}
+                    onClick={() => handleThemeChange(mode)}
+                  >
+                    {mode}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         </aside>
 
@@ -376,27 +469,36 @@ export function ExplorerView({
                 A calmer market board for ranking live carry, comparing rolling averages, and opening detailed time-series only when needed.
               </p>
             </div>
+            <div className="explorer-meta-strip">
+              <span>{response?.source === "live" ? "Live feed" : "Fallback feed"}</span>
+              <strong>{loading ? "Updating" : `${baseRows.length} rows`}</strong>
+              <em>{response?.generatedAt ? `Updated ${formatMinutesAgo(response.generatedAt)}` : "Waiting for data"}</em>
+            </div>
           </header>
 
-          <section className="summary-ribbon summary-ribbon-global">
-            {globalSummary.map((item) => (
-              <article key={`global-${item.label}`} className="summary-tile">
-                <span>{item.label}</span>
-                <strong>{item.symbol}</strong>
-                <em>{item.value}</em>
-              </article>
-            ))}
-          </section>
+          {loading && globalSummary.length === 0 ? <SummarySkeleton /> : (
+            <section className="summary-ribbon summary-ribbon-global">
+              {globalSummary.map((item) => (
+                <article key={`global-${item.label}`} className="summary-tile">
+                  <span>{item.label}</span>
+                  <strong>{item.symbol}</strong>
+                  <em>{item.value}</em>
+                </article>
+              ))}
+            </section>
+          )}
 
-          <section className="summary-ribbon summary-ribbon-venue">
-            {venueSummary.map((item) => (
-              <article key={`venue-${item.label}`} className="summary-tile summary-tile-subtle">
-                <span>{item.label}</span>
-                <strong>{item.symbol}</strong>
-                <em>{item.value}</em>
-              </article>
-            ))}
-          </section>
+          {loading && venueSummary.length === 0 ? <SummarySkeleton /> : (
+            <section className="summary-ribbon summary-ribbon-venue">
+              {venueSummary.map((item) => (
+                <article key={`venue-${item.label}`} className="summary-tile summary-tile-subtle">
+                  <span>{item.label}</span>
+                  <strong>{item.symbol}</strong>
+                  <em>{item.value}</em>
+                </article>
+              ))}
+            </section>
+          )}
 
           <section className="explorer-table-card">
             <div className="explorer-table-head">
@@ -404,13 +506,11 @@ export function ExplorerView({
                 <p className="eyebrow">Screen</p>
                 <h3>Sortable funding table</h3>
               </div>
-              <p className="panel-caption">
-                Click any row to open the full chart and raw history.
-              </p>
+              <p className="panel-caption">Click any row to open the full chart and raw history.</p>
             </div>
 
             {loading ? (
-              <EmptyState message="Loading funding data from the app API." />
+              <TableSkeleton />
             ) : error ? (
               <EmptyState message={error} />
             ) : rows.length === 0 ? (
