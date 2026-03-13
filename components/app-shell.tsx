@@ -4,13 +4,19 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { ProductPageId } from "../lib/domain";
 
-const NAV_ITEMS: { id: ProductPageId; href: string; label: string; blurb: string }[] = [
-  { id: "explorer", href: "/", label: "Explorer", blurb: "Explore funding rates" },
-  { id: "trend", href: "/trend", label: "Trend", blurb: "Analyse funding rate momentum" },
-  { id: "compare", href: "/compare", label: "Compare", blurb: "Best venue by asset" },
-  { id: "spread", href: "/spread", label: "Spread", blurb: "Find the highest spread" },
-  { id: "hedge", href: "/hedge", label: "Swaps", blurb: "Funding rate swap" },
+const NAV_ITEMS: { id: ProductPageId; href: string; label: string; blurb: string; icon: string }[] = [
+  { id: "explorer", href: "/", label: "Explorer", blurb: "Explore funding rates", icon: "◫" },
+  { id: "trend", href: "/trend", label: "Trend", blurb: "Analyse funding rate momentum", icon: "∿" },
+  { id: "compare", href: "/compare", label: "Compare", blurb: "Find the best funding rates", icon: "≡" },
+  { id: "spread", href: "/spread", label: "Spread", blurb: "Find the highest spread", icon: "⇄" },
+  { id: "hedge", href: "/hedge", label: "Swaps", blurb: "Funding rate swap", icon: "◎" },
 ];
+
+const THEME_OPTIONS = [
+  { mode: "light", icon: "◐", label: "Light" },
+  { mode: "dark", icon: "☾", label: "Dark" },
+  { mode: "auto", icon: "◌", label: "Auto" },
+] as const;
 
 type ThemeMode = "light" | "dark" | "auto";
 
@@ -71,13 +77,13 @@ export function AppShell({
 
   return (
     <div className={collapsed ? "app-shell app-shell-collapsed" : "app-shell"}>
-      <aside className="sidebar">
-        <div className="sidebar-top">
-          <div className="sidebar-brand-row">
-            <div className="sidebar-brand">
-              <p>Funding</p>
-              <h1>Explorer V2</h1>
-              <span>Explorer-first MVP with backend-ready structure.</span>
+      <aside className="sidebar sidebar-refined">
+        <div className="sidebar-top sidebar-top-refined">
+          <div className="sidebar-brand-row sidebar-brand-row-refined">
+            <div className="sidebar-brand sidebar-brand-refined">
+              <p>Funding Desk</p>
+              <h1>{page === "hedge" ? "Swaps" : NAV_ITEMS.find((item) => item.id === page)?.label}</h1>
+              <span>{NAV_ITEMS.find((item) => item.id === page)?.blurb}</span>
             </div>
 
             <button
@@ -90,40 +96,43 @@ export function AppShell({
             </button>
           </div>
 
-          <div className="theme-switcher">
-            {(["light", "dark", "auto"] as const).map((mode) => (
-              <button
-                key={mode}
-                type="button"
-                className={themeMode === mode ? "theme-button theme-button-active" : "theme-button"}
-                onClick={() => handleThemeChange(mode)}
+          <nav className="sidebar-nav sidebar-nav-refined">
+            {NAV_ITEMS.map((item) => (
+              <Link
+                key={item.id}
+                href={item.href}
+                className={item.id === page ? "nav-item nav-item-active nav-item-refined" : "nav-item nav-item-refined"}
               >
-                {mode}
+                <span className="nav-icon">{item.icon}</span>
+                <div>
+                  <strong>{item.label}</strong>
+                  <span>{item.blurb}</span>
+                </div>
+              </Link>
+            ))}
+          </nav>
+        </div>
+
+        <div className="sidebar-foot sidebar-foot-refined">
+          <div className="rail-theme-footer">
+            {THEME_OPTIONS.map((option) => (
+              <button
+                key={option.mode}
+                type="button"
+                className={themeMode === option.mode ? "theme-icon-button theme-icon-button-active" : "theme-icon-button"}
+                onClick={() => handleThemeChange(option.mode)}
+                aria-label={option.label}
+                title={option.label}
+              >
+                {option.icon}
               </button>
             ))}
           </div>
-        </div>
-
-        <nav className="sidebar-nav">
-          {NAV_ITEMS.map((item) => (
-            <Link
-              key={item.id}
-              href={item.href}
-              className={item.id === page ? "nav-item nav-item-active" : "nav-item"}
-            >
-              <strong>{item.label}</strong>
-              <span>{item.blurb}</span>
-            </Link>
-          ))}
-        </nav>
-
-        <div className="sidebar-foot">
-          <p>Phase 1</p>
-          <span>UI shell + live venue adapters + Explorer UX pass</span>
+          <span className="rail-version">v0.1.0</span>
         </div>
       </aside>
 
-      <main className="main-panel">{children}</main>
+      <main className="main-panel main-panel-refined">{children}</main>
     </div>
   );
 }
