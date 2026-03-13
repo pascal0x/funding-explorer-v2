@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { MouseEvent, useEffect, useMemo, useState } from "react";
 import {
   ExplorerResponse,
   ExplorerRow,
@@ -14,12 +14,18 @@ import {
 import { formatApr, formatHourlyRate, formatMinutesAgo, titleCase } from "../lib/format";
 
 const LIVE_VENUES = ["hyperliquid", "binance", "bybit"] satisfies VenueId[];
-const NAV_ITEMS: { id: ProductPageId; href: string; label: string }[] = [
-  { id: "explorer", href: "/", label: "Explorer" },
-  { id: "trend", href: "/trend", label: "Trend" },
-  { id: "compare", href: "/compare", label: "Compare" },
-  { id: "spread", href: "/spread", label: "Spread" },
-  { id: "hedge", href: "/hedge", label: "Hedge" },
+const APP_VERSION = "v0.1.0";
+const NAV_ITEMS: { id: ProductPageId; href: string; label: string; icon: string }[] = [
+  { id: "explorer", href: "/", label: "Explorer", icon: "◫" },
+  { id: "trend", href: "/trend", label: "Trend", icon: "∿" },
+  { id: "compare", href: "/compare", label: "Compare", icon: "≡" },
+  { id: "spread", href: "/spread", label: "Spread", icon: "⇄" },
+  { id: "hedge", href: "/hedge", label: "Hedge", icon: "◎" },
+];
+const THEME_OPTIONS: { mode: ThemeMode; icon: string; label: string }[] = [
+  { mode: "light", icon: "◐", label: "Light" },
+  { mode: "dark", icon: "☾", label: "Dark" },
+  { mode: "auto", icon: "◌", label: "Auto" },
 ];
 
 type ThemeMode = "light" | "dark" | "auto";
@@ -33,8 +39,7 @@ type SortKey =
   | "avg90dApr"
   | "edgeVsAvg30d"
   | "percentile90d"
-  | "positiveShare7d"
-  | "updatedAt";
+  | "positiveShare7d";
 
 type SortState = {
   key: SortKey;
@@ -117,8 +122,6 @@ function sortRows(rows: ExplorerRow[], sort: SortState) {
         return direction * (left.percentile90d - right.percentile90d);
       case "positiveShare7d":
         return direction * (left.positiveShare7d - right.positiveShare7d);
-      case "updatedAt":
-        return direction * (new Date(left.updatedAt).getTime() - new Date(right.updatedAt).getTime());
       default:
         return 0;
     }
@@ -134,6 +137,7 @@ function Chart({
   points: { timestamp: string; rateHourly: number }[];
   compact?: boolean;
 }) {
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const width = compact ? 168 : 960;
   const height = compact ? 54 : 270;
   const paddingX = compact ? 0 : 20;
@@ -146,16 +150,45 @@ function Chart({
   const innerHeight = height - paddingY * 2;
   const zeroY = paddingY + innerHeight - ((0 - min) / range) * innerHeight;
 
-  const path = points
-    .map((point, index) => {
-      const x = paddingX + (index / Math.max(points.length - 1, 1)) * innerWidth;
-      const y = paddingY + innerHeight - ((point.rateHourly - min) / range) * innerHeight;
-      return `${index === 0 ? "M" : "L"}${x.toFixed(1)},${y.toFixed(1)}`;
-    })
+  const coordinates = useMemo(
+    () =>
+      points.map((point, index) => {
+        const x = paddingX + (index / Math.max(points.length - 1, 1)) * innerWidth;
+        const y = paddingY + innerHeight - ((point.rateHourly - min) / range) * innerHeight;
+        return { ...point, x, y };
+      }),
+    [innerHeight, innerWidth, max, min, paddingX, paddingY, points, range],
+  );
+
+  const path = coordinates
+    .map((point, index) => `${index === 0 ? "M" : "L"}${point.x.toFixed(1)},${point.y.toFixed(1)}`)
     .join(" ");
 
+  const hoveredPoint = hoveredIndex === null ? null : coordinates[hoveredIndex];
+  const tooltipX = hoveredPoint ? Math.min(Math.max(hoveredPoint.x + 14, 80), width - 120) : 0;
+  const tooltipY = hoveredPoint ? Math.max(hoveredPoint.y - 62, 18) : 0;
+
+  function handlePointerMove(event: MouseEvent<SVGSVGElement>) {
+    if (compact) {
+      return;
+    }
+
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const relativeX = ((event.clientX - bounds.left) / bounds.width) * width;
+    const ratio = Math.min(Math.max((relativeX - paddingX) / Math.max(innerWidth, 1), 0), 1);
+    const nextIndex = Math.round(ratio * Math.max(points.length - 1, 0));
+    setHoveredIndex(nextIndex);
+  }
+
   return (
-    <svg viewBox={`0 0 ${width} ${height}`} className={compact ? "mini-chart" : "detail-chart"} role="img" aria-label="Funding history">
+    <svg
+      viewBox={`0 0 ${width} ${height}`}
+      className={compact ? "mini-chart" : "detail-chart"}
+      role="img"
+      aria-label="Funding history"
+      onMouseMove={handlePointerMove}
+      onMouseLeave={() => setHoveredIndex(null)}
+    >
       {!compact &&
         Array.from({ length: 6 }, (_, index) => {
           const y = paddingY + (index / 5) * innerHeight;
@@ -173,20 +206,25 @@ function Chart({
       <line x1={paddingX} x2={width - paddingX} y1={zeroY} y2={zeroY} className="detail-chart-zero" />
       <path d={path} className={compact ? "mini-chart-path" : "detail-chart-path"} />
       {!compact &&
-        points
+        coordinates
           .filter((_, index) => index % Math.max(Math.floor(points.length / 6), 1) === 0)
-          .map((point, index) => {
-            const x =
-              paddingX +
-              (points.findIndex((entry) => entry.timestamp === point.timestamp) /
-                Math.max(points.length - 1, 1)) *
-                innerWidth;
-            return (
-              <text key={`${point.timestamp}-${index}`} x={x} y={height - 4} className="detail-chart-label">
-                {formatDateLabel(point.timestamp)}
-              </text>
-            );
-          })}
+          .map((point, index) => (
+            <text key={`${point.timestamp}-${index}`} x={point.x} y={height - 4} className="detail-chart-label">
+              {formatDateLabel(point.timestamp)}
+            </text>
+          ))}
+      {!compact && hoveredPoint ? (
+        <>
+          <line x1={hoveredPoint.x} x2={hoveredPoint.x} y1={paddingY} y2={height - paddingY} className="detail-chart-cursor" />
+          <circle cx={hoveredPoint.x} cy={hoveredPoint.y} r="4.5" className="detail-chart-dot" />
+          <g transform={`translate(${tooltipX}, ${tooltipY})`} className="detail-chart-tooltip">
+            <rect width="110" height="52" rx="12" ry="12" className="detail-chart-tooltip-box" />
+            <text x="10" y="17" className="detail-chart-tooltip-date">{formatDateLabel(hoveredPoint.timestamp)}</text>
+            <text x="10" y="31" className="detail-chart-tooltip-rate">{formatHourlyRate(hoveredPoint.rateHourly)}</text>
+            <text x="10" y="45" className="detail-chart-tooltip-apr">{formatApr(hoveredPoint.rateHourly * 24 * 365)}</text>
+          </g>
+        </>
+      ) : null}
     </svg>
   );
 }
@@ -222,11 +260,11 @@ function SortHeader({
   );
 }
 
-function SummarySkeleton() {
+function SummarySkeleton({ subtle = false }: { subtle?: boolean }) {
   return (
-    <section className="summary-ribbon summary-ribbon-global">
+    <section className={subtle ? "summary-ribbon summary-ribbon-venue" : "summary-ribbon summary-ribbon-global"}>
       {Array.from({ length: 5 }, (_, index) => (
-        <article key={index} className="summary-tile summary-tile-skeleton">
+        <article key={index} className={`summary-tile summary-tile-skeleton${subtle ? " summary-tile-subtle" : ""}`}>
           <span className="skeleton-line skeleton-line-short" />
           <strong className="skeleton-line skeleton-line-medium" />
           <em className="skeleton-line skeleton-line-short" />
@@ -389,20 +427,22 @@ export function ExplorerView({
         <div className="explorer-hero-strip" />
 
         <aside className="explorer-side-rail explorer-side-rail-navfirst">
-          <div className="rail-nav-wrap">
-            <p className="rail-label">Navigate</p>
-            <nav className="rail-nav">
+          <div className="rail-nav-wrap rail-nav-wrap-clean">
+            <nav className="rail-nav rail-nav-clean">
               {NAV_ITEMS.map((item) => (
                 <Link
                   key={item.id}
                   href={item.href}
                   className={item.id === "explorer" ? "rail-nav-item rail-nav-item-active" : "rail-nav-item"}
                 >
-                  {item.label}
+                  <span className="rail-nav-icon">{item.icon}</span>
+                  <span>{item.label}</span>
                 </Link>
               ))}
             </nav>
           </div>
+
+          <div className="rail-divider" />
 
           <div className="rail-filter-stack">
             <div className="rail-block">
@@ -441,26 +481,48 @@ export function ExplorerView({
               <span className="rail-label">Search</span>
               <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="BTC, ETH, NVDA" />
             </label>
+          </div>
 
-            <div className="rail-theme-block">
-              <span className="rail-label">Theme</span>
-              <div className="theme-switcher">
-                {(["light", "dark", "auto"] as const).map((mode) => (
-                  <button
-                    key={mode}
-                    type="button"
-                    className={themeMode === mode ? "theme-button theme-button-active" : "theme-button"}
-                    onClick={() => handleThemeChange(mode)}
-                  >
-                    {mode}
-                  </button>
-                ))}
-              </div>
+          <div className="rail-footer">
+            <div className="rail-theme-footer">
+              {THEME_OPTIONS.map((option) => (
+                <button
+                  key={option.mode}
+                  type="button"
+                  className={themeMode === option.mode ? "theme-icon-button theme-icon-button-active" : "theme-icon-button"}
+                  onClick={() => handleThemeChange(option.mode)}
+                  aria-label={option.label}
+                  title={option.label}
+                >
+                  {option.icon}
+                </button>
+              ))}
             </div>
+            <span className="rail-version">{APP_VERSION}</span>
           </div>
         </aside>
 
         <div className="explorer-main-stage">
+          {loading && globalSummary.length === 0 ? (
+            <SummarySkeleton />
+          ) : (
+            <section className="summary-cluster">
+              <div className="summary-cluster-head">
+                <p className="eyebrow">All venues</p>
+                <h3>Top five across venues</h3>
+              </div>
+              <section className="summary-ribbon summary-ribbon-global">
+                {globalSummary.map((item) => (
+                  <article key={`global-${item.label}`} className="summary-tile">
+                    <span>{item.label}</span>
+                    <strong>{item.symbol}</strong>
+                    <em>{item.value}</em>
+                  </article>
+                ))}
+              </section>
+            </section>
+          )}
+
           <header className="explorer-main-header">
             <div>
               <p className="eyebrow">Overview</p>
@@ -469,44 +531,34 @@ export function ExplorerView({
                 A calmer market board for ranking live carry, comparing rolling averages, and opening detailed time-series only when needed.
               </p>
             </div>
-            <div className="explorer-meta-strip">
-              <span>{response?.source === "live" ? "Live feed" : "Fallback feed"}</span>
-              <strong>{loading ? "Updating" : `${baseRows.length} rows`}</strong>
-              <em>{response?.generatedAt ? `Updated ${formatMinutesAgo(response.generatedAt)}` : "Waiting for data"}</em>
-            </div>
           </header>
 
-          {loading && globalSummary.length === 0 ? <SummarySkeleton /> : (
-            <section className="summary-ribbon summary-ribbon-global">
-              {globalSummary.map((item) => (
-                <article key={`global-${item.label}`} className="summary-tile">
-                  <span>{item.label}</span>
-                  <strong>{item.symbol}</strong>
-                  <em>{item.value}</em>
-                </article>
-              ))}
-            </section>
-          )}
-
-          {loading && venueSummary.length === 0 ? <SummarySkeleton /> : (
-            <section className="summary-ribbon summary-ribbon-venue">
-              {venueSummary.map((item) => (
-                <article key={`venue-${item.label}`} className="summary-tile summary-tile-subtle">
-                  <span>{item.label}</span>
-                  <strong>{item.symbol}</strong>
-                  <em>{item.value}</em>
-                </article>
-              ))}
+          {loading && venueSummary.length === 0 ? (
+            <SummarySkeleton subtle />
+          ) : (
+            <section className="summary-cluster">
+              <div className="summary-cluster-head">
+                <p className="eyebrow">{selectedVenueLabel}</p>
+                <h3>Top five on venue</h3>
+              </div>
+              <section className="summary-ribbon summary-ribbon-venue">
+                {venueSummary.map((item) => (
+                  <article key={`venue-${item.label}`} className="summary-tile summary-tile-subtle">
+                    <span>{item.label}</span>
+                    <strong>{item.symbol}</strong>
+                    <em>{item.value}</em>
+                  </article>
+                ))}
+              </section>
             </section>
           )}
 
           <section className="explorer-table-card">
-            <div className="explorer-table-head">
+            <div className="explorer-table-head explorer-table-head-clean">
               <div>
                 <p className="eyebrow">Screen</p>
                 <h3>Sortable funding table</h3>
               </div>
-              <p className="panel-caption">Click any row to open the full chart and raw history.</p>
             </div>
 
             {loading ? (
@@ -530,7 +582,6 @@ export function ExplorerView({
                       <th><SortHeader label="90d pct" sortKey="percentile90d" activeSort={sort} onSort={handleSort} /></th>
                       <th><SortHeader label="% positive" sortKey="positiveShare7d" activeSort={sort} onSort={handleSort} /></th>
                       <th>Trend</th>
-                      <th><SortHeader label="Updated" sortKey="updatedAt" activeSort={sort} onSort={handleSort} /></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -559,11 +610,10 @@ export function ExplorerView({
                           <td>{row.percentile90d}</td>
                           <td>{row.positiveShare7d}%</td>
                           <td><Chart points={row.history} compact /></td>
-                          <td>{formatMinutesAgo(row.updatedAt)}</td>
                         </tr>,
                         expanded ? (
                           <tr key={`${rowKey}-detail`} className="detail-row">
-                            <td colSpan={11}>
+                            <td colSpan={10}>
                               <div className="detail-panel detail-panel-board">
                                 <div className="detail-summary detail-summary-clean">
                                   <article className="detail-stat"><span>Live APR</span><strong>{formatApr(row.annualizedLive)}</strong></article>
